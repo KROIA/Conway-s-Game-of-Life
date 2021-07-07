@@ -18,6 +18,7 @@ Tile::Tile(Vector2u coord)
         setAlive();
 
     m_nextTickState = m_state;
+    m_colorFadeFactor = 0.8;
     //GameObject::setVisibility_collider_hitbox(true);
 }
 
@@ -29,6 +30,11 @@ void Tile::addNeighbour(Tile *neighbour)
 void Tile::setNeighbourList(const vector<Tile*> &list)
 {
     m_neighbourList = list;
+}
+void Tile::setColorFadeFactor(float factor)
+{
+    if(factor > 0 && factor < 1)
+        m_colorFadeFactor = factor;
 }
 
 const Vector2u &Tile::getCoord() const
@@ -96,7 +102,7 @@ void Tile::draw(PixelDisplay &display)
 {
     if(m_state == dead)
     {
-        fadeColor(m_deadColor,0.8);
+        fadeColor(m_deadColor,m_colorFadeFactor);
         display.setPixel(Vector2i(m_coord),m_deadColor);
     }
     else
@@ -113,6 +119,12 @@ void Tile::setAlive()
     m_aliveColor.r = (rand()%155)+100;
     m_aliveColor.g = (rand()%155)+100;
     m_aliveColor.b = (rand()%155)+100;
+}
+void Tile::setAlive(const Color &color)
+{
+    m_state = alive;
+    m_nextTickState = alive;
+    m_aliveColor = color;
 }
 void Tile::setDead()
 {

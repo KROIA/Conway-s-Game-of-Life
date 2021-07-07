@@ -14,6 +14,7 @@ class Tile  :   public GameObject
 
         void addNeighbour(Tile *neighbour);
         void setNeighbourList(const vector<Tile*> &list);
+        void setColorFadeFactor(float factor);
 
         const Vector2u &getCoord() const;
         const State    &getState() const;
@@ -24,6 +25,7 @@ class Tile  :   public GameObject
         void draw(PixelDisplay &display);
 
         void setAlive();
+        void setAlive(const Color &color);
         void setDead();
     protected:
 
@@ -40,6 +42,7 @@ class Tile  :   public GameObject
 
         vector<Tile*> m_neighbourList;
         vector<Color> m_colorList;
+        float m_colorFadeFactor;
 };
 
 #endif // TILE_H
