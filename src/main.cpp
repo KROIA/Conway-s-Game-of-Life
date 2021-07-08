@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
 
     if(syncMode)
     {
-        engine->set_setting_syncEngineInterval(0.01);
+        engine->set_setting_syncEngineInterval(0.02);
         engine->set_setting_runInSync(true);
     }
     else
@@ -129,7 +129,6 @@ int main(int argc, char *argv[])
         if(!tickPause)
             engine->tick();
         engine->display();
-
 #ifdef BUILD_WITH_EASY_PROFILER
         if(engine->getTick() > 20)
            engine->stop();
