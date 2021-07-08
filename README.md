@@ -1,6 +1,17 @@
 # Conway's Game of Life
-
+<img src="https://github.com/KROIA/Conway-s-Game-of-Life/blob/main/resources/output/GliderGun.png" width="400"><img src="https://github.com/KROIA/Conway-s-Game-of-Life/blob/main/resources/output/NetFill.png" width="396"><br>
 This is a small Example using the [Pixelengine](https://github.com/KROIA/Pixelengine)
+
+## Overview
+Play with the interactive Game of Life implementation, create your own creations and watch them evolve<br>
+### Features
+* Pause and Play the game using the space key.<br>
+* Leftklick for adding a living cell and rightklick to kill a cell.<br>
+* Press key: 1,2 or 3  to load one of 3 example images.<br>
+* Press key: S  to store the current frame.<br>
+* Press key: A  to load the last stored frame.<br>
+* Zoom in and out using the mousewheel. <br>
+* Drag the map around by klick and drag on the mousewheel.<br>
 
 ## Setup
 Clone this Git. It will contain the Pixelengine as submodule.
