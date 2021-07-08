@@ -1,5 +1,7 @@
 #include "tile.h"
 
+float Tile::perlinXOffset = 0;
+float Tile::perlinYOffset = 0;
 Tile::Tile(Vector2u coord)
     :   GameObject()
 {
@@ -100,6 +102,13 @@ void Tile::tick(const Vector2i &direction)
     }
     else
     {
+       /* if(m_coord.x == 0 && m_coord.y == 0)
+        {
+            perlinXOffset+= 0.01;
+            perlinYOffset+= 0.01;
+           // qDebug() << perlinXOffset;
+        }*/
+
         mixColors();
         m_state = m_nextTickState;
     }
@@ -122,9 +131,14 @@ void Tile::setAlive()
 {
     m_state = alive;
     m_nextTickState = alive;
-    m_aliveColor.r = (rand()%155)+100;
-    m_aliveColor.g = (rand()%155)+100;
-    m_aliveColor.b = (rand()%155)+100;
+    float scale = 50;
+    float offset = 30;
+    float colorStrength = 128;
+    m_aliveColor.r =(1+perlin((float)m_coord.x/scale+perlinXOffset,(float)m_coord.y/scale+perlinYOffset))*colorStrength;
+    m_aliveColor.g =(1+perlin((float)m_coord.x/scale+offset+perlinXOffset,(float)m_coord.y/scale+offset+perlinYOffset))*colorStrength;;
+    m_aliveColor.b =(1+perlin((float)m_coord.x/scale+2*offset+perlinXOffset,(float)m_coord.y/scale+2*offset+perlinYOffset))*colorStrength;
+
+
 }
 void Tile::setAlive(const Color &color)
 {
@@ -144,11 +158,15 @@ void Tile::mixColors()
     long r = 0;
     long g = 0;
     long b = 0;
-   // if(m_state == dead)
+    float scale = 50;
+    float offset = 10;
+
+    float colorStrength = 5;
+    if(m_state == dead)
     {
-        r= (rand()%5);
-        g= (rand()%5);
-        b= (rand()%5);
+        r= (1+perlin((float)m_coord.x/scale+perlinXOffset,(float)m_coord.y/scale+perlinYOffset))*colorStrength;
+        g= (1+perlin((float)m_coord.x/scale+offset+perlinXOffset,(float)m_coord.y/scale+offset+perlinYOffset))*colorStrength;;
+        b= (1+perlin((float)m_coord.x/scale+2*offset+perlinXOffset,(float)m_coord.y/scale+2*offset+perlinYOffset))*colorStrength;
     }
     for(size_t i=0; i<m_colorList.size(); i++)
     {
@@ -166,4 +184,73 @@ void Tile::fadeColor(Color &c,float factor)
     c.r *= factor;
     c.g *= factor;
     c.b *= factor;
+}
+
+
+/* Function to linearly interpolate between a0 and a1
+ * Weight w should be in the range [0.0, 1.0]
+ */
+float interpolate(float a0, float a1, float w) {
+    /* // You may want clamping by inserting:
+     * if (0.0 > w) return a0;
+     * if (1.0 < w) return a1;
+     */
+    return (a1 - a0) * w + a0;
+    /* // Use this cubic interpolation [[Smoothstep]] instead, for a smooth appearance:
+     * return (a1 - a0) * (3.0 - w * 2.0) * w * w + a0;
+     *
+     * // Use [[Smootherstep]] for an even smoother result with a second derivative equal to zero on boundaries:
+     * return (a1 - a0) * ((w * (w * 6.0 - 15.0) + 10.0) * w * w * w) + a0;
+     */
+}
+
+
+
+/* Create random direction vector
+ */
+Vector2f randomGradient(int ix, int iy) {
+    // Random float. No precomputed gradients mean this works for any number of grid coordinates
+    float random = 2920.f * sin(ix * 21942.f + iy * 171324.f + 8912.f) * cos(ix * 23157.f * iy * 217832.f + 9758.f);
+    return Vector2f(cos(random),sin(random));
+}
+
+// Computes the dot product of the distance and gradient vectors.
+float dotGridGradient(int ix, int iy, float x, float y) {
+    // Get gradient from integer coordinates
+    Vector2f gradient = randomGradient(ix, iy);
+
+    // Compute the distance vector
+    float dx = x - (float)ix;
+    float dy = y - (float)iy;
+
+    // Compute the dot-product
+    return (dx*gradient.x + dy*gradient.y);
+}
+
+// Compute Perlin noise at coordinates x, y
+float perlin(float x, float y) {
+    // Determine grid cell coordinates
+    int x0 = (int)x;
+    int x1 = x0 + 1;
+    int y0 = (int)y;
+    int y1 = y0 + 1;
+
+    // Determine interpolation weights
+    // Could also use higher order polynomial/s-curve here
+    float sx = x - (float)x0;
+    float sy = y - (float)y0;
+
+    // Interpolate between grid point gradients
+    float n0, n1, ix0, ix1, value;
+
+    n0 = dotGridGradient(x0, y0, x, y);
+    n1 = dotGridGradient(x1, y0, x, y);
+    ix0 = interpolate(n0, n1, sx);
+
+    n0 = dotGridGradient(x0, y1, x, y);
+    n1 = dotGridGradient(x1, y1, x, y);
+    ix1 = interpolate(n0, n1, sx);
+
+    value = interpolate(ix0, ix1, sy);
+    return value;
 }

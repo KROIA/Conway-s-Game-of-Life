@@ -1,5 +1,6 @@
 #include "pixelengine.h"
 #include "tile.h"
+#include <math.h>
 
 #include "QDebug"
 
@@ -19,9 +20,11 @@ const string startInfoText =
         string("2     |   Will load the "+resourcePath+"\\Simkin_glider_gun.png\n") +
         string("3     |   Will load the "+resourcePath+"\\Netmaker.png\n") +
         string("4     |   Will load the "+resourcePath+"\\frothing_spaceship.png\n") +
+        string("5     |   Will load the "+resourcePath+"\\Sun.png\n") +
         string("C     |   Clears the map\n") +
         string("S     |   Saves the current map to an image in the Folder: "+outputPath+"\n") +
         string("A     |   Will load the last saved map\n") +
+        string("-->   |   Will step one step forward\n") +
         string("ENTER |   Will remove this infotext\n") +
         string("\nMouse:\n")+
         string("WheelScroll:            Zoom +/-\n")+
@@ -36,6 +39,7 @@ Event keyEvent_C;
 Event keyEvent_S;
 Event keyEvent_A;
 Event keyEvent_ENTER;
+Event keyEvent_singleStep;
 vector<Event> keyEvent_numbers;
 vector<vector<Tile*>    > map;
 RectF mapFrame;
@@ -44,6 +48,7 @@ DisplayText *displayText_startInfo;
 
 
 bool tickPause = true;
+bool doSingleStep = false;
 bool leftMouseKilckActive = false;
 bool rightMouseKilckActive = false;
 string lastSavedImagePath = "";
@@ -117,7 +122,9 @@ int main(int argc, char *argv[])
     keyEvent_numbers.push_back(Event(KEYBOARD_KEY_2));
     keyEvent_numbers.push_back(Event(KEYBOARD_KEY_3));
     keyEvent_numbers.push_back(Event(KEYBOARD_KEY_4));
+    keyEvent_numbers.push_back(Event(KEYBOARD_KEY_5));
     keyEvent_ENTER.setKey(KEYBOARD_KEY_ENTER);
+    keyEvent_singleStep.setKey(KEYBOARD_KEY_ARROW_RIGHT);
 
 
 #ifdef BUILD_WITH_EASY_PROFILER
@@ -128,8 +135,11 @@ int main(int argc, char *argv[])
     while(engine->running())
     {
         engine->checkEvent();
-        if(!tickPause)
+        if(!tickPause || doSingleStep)
+        {
+            doSingleStep = false;
             engine->tick();
+        }
         engine->display();
 #ifdef BUILD_WITH_EASY_PROFILER
         if(engine->getTick() > 20)
@@ -152,6 +162,7 @@ void userEventLoop(float tickInterval,unsigned long long tick,const vector<sf::E
     for(Event & e:keyEvent_numbers)
         e.checkEvent();
     keyEvent_ENTER.checkEvent();
+    keyEvent_singleStep.checkEvent();
 
     if(keyEvent_P.isSinking())
     {
@@ -200,6 +211,9 @@ void userEventLoop(float tickInterval,unsigned long long tick,const vector<sf::E
                 case 3:
                     loadFromImage(resourcePath+"\\frothing_spaceship.png",mapsize/2u-Vector2u(33,23)/2u);
                 break;
+                case 4:
+                    loadFromImage(resourcePath+"\\Sun.png",mapsize/2u-Vector2u(33,23)/2u);
+                break;
                 default:
 
                 break;
@@ -211,6 +225,10 @@ void userEventLoop(float tickInterval,unsigned long long tick,const vector<sf::E
         if(keyEvent_ENTER.getCounter_isSinking() == 1)
             engine->removeDisplayText(displayText_startInfo);
     }
+    if(keyEvent_singleStep.isSinking())
+    {
+        doSingleStep = true;
+    }else
 
     for(const sf::Event &event : eventList)
     {

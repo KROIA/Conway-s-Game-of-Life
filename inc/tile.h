@@ -44,6 +44,13 @@ class Tile  :   public GameObject
         vector<Tile*> m_neighbourList;
         vector<Color> m_colorList;
         float m_colorFadeFactor;
+        static float perlinXOffset;
+        static float perlinYOffset;
 };
+
+float interpolate(float a0, float a1, float w);
+Vector2f randomGradient(int ix, int iy);
+float dotGridGradient(int ix, int iy, float x, float y);
+float perlin(float x, float y);
 
 #endif // TILE_H
