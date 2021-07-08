@@ -18,6 +18,7 @@ const string startInfoText =
         string("1     |   Will load the "+resourcePath+"\\Glider_gun.png\n") +
         string("2     |   Will load the "+resourcePath+"\\Simkin_glider_gun.png\n") +
         string("3     |   Will load the "+resourcePath+"\\Netmaker.png\n") +
+        string("4     |   Will load the "+resourcePath+"\\frothing_spaceship.png\n") +
         string("C     |   Clears the map\n") +
         string("S     |   Saves the current map to an image in the Folder: "+outputPath+"\n") +
         string("A     |   Will load the last saved map\n") +
@@ -115,6 +116,7 @@ int main(int argc, char *argv[])
     keyEvent_numbers.push_back(Event(KEYBOARD_KEY_1));
     keyEvent_numbers.push_back(Event(KEYBOARD_KEY_2));
     keyEvent_numbers.push_back(Event(KEYBOARD_KEY_3));
+    keyEvent_numbers.push_back(Event(KEYBOARD_KEY_4));
     keyEvent_ENTER.setKey(KEYBOARD_KEY_ENTER);
 
 
@@ -194,6 +196,9 @@ void userEventLoop(float tickInterval,unsigned long long tick,const vector<sf::E
                 break;
                 case 2: // Taste "1"
                     loadFromImage(resourcePath+"\\Netmaker.png",mapsize/2u-Vector2u(49,26)/2u);
+                break;
+                case 3:
+                    loadFromImage(resourcePath+"\\frothing_spaceship.png",mapsize/2u-Vector2u(33,23)/2u);
                 break;
                 default:
 

@@ -141,14 +141,14 @@ void Tile::mixColors()
 {
     if(m_colorList.size() == 0)
         return;
-    long r;
-    long g;
-    long b;
+    long r = 0;
+    long g = 0;
+    long b = 0;
    // if(m_state == dead)
     {
-        r= (rand()%10);
-        g= (rand()%10);
-        b= (rand()%10);
+        r= (rand()%5);
+        g= (rand()%5);
+        b= (rand()%5);
     }
     for(size_t i=0; i<m_colorList.size(); i++)
     {
