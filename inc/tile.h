@@ -19,6 +19,7 @@ class Tile  :   public GameObject
         const Vector2u &getCoord() const;
         const State    &getState() const;
         const Color    &getAliveColor() const;
+        const Color    &getColor() const;
 
         void prepareForNextMove();
         void tick(const Vector2i &direction);

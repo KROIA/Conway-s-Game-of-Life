@@ -33,7 +33,7 @@ void Tile::setNeighbourList(const vector<Tile*> &list)
 }
 void Tile::setColorFadeFactor(float factor)
 {
-    if(factor > 0 && factor < 1)
+    if(factor >= 0 && factor <= 1)
         m_colorFadeFactor = factor;
 }
 
@@ -48,6 +48,12 @@ const Tile::State &Tile::getState() const
 const Color    &Tile::getAliveColor() const
 {
     return m_aliveColor;
+}
+const Color    &Tile::getColor() const
+{
+    if(m_state == alive)
+        return m_aliveColor;
+    return m_deadColor;
 }
 void Tile::prepareForNextMove()
 {
@@ -95,7 +101,7 @@ void Tile::tick(const Vector2i &direction)
     else
     {
         mixColors();
-        m_state = m_nextTickState;        
+        m_state = m_nextTickState;
     }
 }
 void Tile::draw(PixelDisplay &display)

@@ -4,16 +4,38 @@
 #include "QDebug"
 
 const string resourcePath = "..\\..\\resources"; // Where your images are stored
-const Vector2u mapsize(100,100);    // Mapsize for the game
-float colorFadeFactor = 0.8; // Factor how fast a dead cell will go to the color black. 1-> never, 0->instent
+const string outputPath   = "..\\..\\resources\\output"; // Where your images will be exported to
+const Vector2u mapsize(500,500);    // Mapsize for the game
+float colorFadeFactor = 0.7; // Factor how fast a dead cell will go to the color black. 1-> never, 0->instent
+bool syncMode = true;
+//string startInfoText = "Startinfo:\nKeybinding:\nKey   |   Description\nSPACE |   Will pause the game\nP     |   Will show some stats about the running engine\n1     |   Will load the "+resourcePath+"\\Glider_gun.png \n2     |   Will load the "+resourcePath+"\\Simkin_glider_gun.png\n3     |   Will load the "+resourcePath+"\\Netmaker.png\nC     |   Clears the map\nS     |   Saves the current map to a image in the Folder: "+outputPath+"\nA     |   Will load the last saved map\nENTER |   Will remove this infotext\n";
+const string startInfoText =
+        string("Startinfo:\n") +
+        string("Keybinding:\n") +
+        string("Key   |   Description\n") +
+        string("SPACE |   Will pause the game\n") +
+        string("P     |   Will show some stats about the running engine\n") +
+        string("1     |   Will load the "+resourcePath+"\\Glider_gun.png\n") +
+        string("2     |   Will load the "+resourcePath+"\\Simkin_glider_gun.png\n") +
+        string("3     |   Will load the "+resourcePath+"\\Netmaker.png\n") +
+        string("C     |   Clears the map\n") +
+        string("S     |   Saves the current map to an image in the Folder: "+outputPath+"\n") +
+        string("A     |   Will load the last saved map\n") +
+        string("ENTER |   Will remove this infotext\n") +
+        string("\nMouse:\n")+
+        string("WheelScroll:            Zoom +/-\n")+
+        string("WheelKlick MouseMove:   Moves the Camera\n")+
+        string("LeftKlick:              Sets the cell on the mouse cursor to alive\n")+
+        string("RightKlick:             Sets the cell on the mouse cursor to dead\n");
 
 PixelEngine *engine;
 Event keyEvent_P;
 Event keyEvent_SPCAE;
 Event keyEvent_C;
-Event keyEvent_1;
-Event keyEvent_2;
+Event keyEvent_S;
+Event keyEvent_A;
 Event keyEvent_ENTER;
+vector<Event> keyEvent_numbers;
 vector<vector<Tile*>    > map;
 RectF mapFrame;
 DisplayText *displayText_pause;
@@ -23,6 +45,7 @@ DisplayText *displayText_startInfo;
 bool tickPause = true;
 bool leftMouseKilckActive = false;
 bool rightMouseKilckActive = false;
+string lastSavedImagePath = "";
 
 GameObjectGroup *generateMap(Vector2u size);
 
@@ -38,6 +61,9 @@ void userEventLoop(float tickInterval,unsigned long long tick,const vector<sf::E
 void userDisplayLoop(float tickInterval,unsigned long long tick,PixelDisplay &display);
 
 void loadFromImage(const string &image,Vector2u drawPos);
+void saveToImage();
+void saveToImage(const string &file);
+
 
 int main(int argc, char *argv[])
 {
@@ -46,14 +72,23 @@ int main(int argc, char *argv[])
     EASY_MAIN_THREAD;
 #endif
 
-    Vector2u mapsize(100,100);
     engine = new PixelEngine(mapsize,Vector2u(1900,1000));
 
     GameObjectGroup *tiles = generateMap(mapsize);
     engine->addGameObject(tiles);
-    engine->set_setting_checkEventInterval(0.02);
-    engine->set_setting_displayInterval(0.02);
-    engine->set_setting_gameTickInterval(0.1);
+
+
+    if(syncMode)
+    {
+        engine->set_setting_syncEngineInterval(0.01);
+        engine->set_setting_runInSync(true);
+    }
+    else
+    {
+        engine->set_setting_checkEventInterval(0.02);
+        engine->set_setting_displayInterval(0.01);
+        engine->set_setting_gameTickInterval(0.01);
+    }
     engine->setUserCheckEventLoop(userEventLoop);
     engine->setUserDisplayLoop(userDisplayLoop);
 
@@ -66,8 +101,8 @@ int main(int argc, char *argv[])
     engine->addDisplayText(displayText_pause);
 
     displayText_startInfo = new DisplayText();
-    displayText_startInfo->setCharacterSize(25);
-    displayText_startInfo->setText("Info");
+    displayText_startInfo->setCharacterSize(18);
+    displayText_startInfo->setText(startInfoText);
     displayText_startInfo->setPos(Vector2f(0,0));
     displayText_startInfo->setPositionFix(true);
     displayText_startInfo->setVisibility(true);
@@ -78,13 +113,18 @@ int main(int argc, char *argv[])
     keyEvent_P.setKey(KEYBOARD_KEY_P);
     keyEvent_SPCAE.setKey(KEYBOARD_KEY_SPACE);
     keyEvent_C.setKey(KEYBOARD_KEY_C);
-    keyEvent_1.setKey(KEYBOARD_KEY_1);
-    keyEvent_2.setKey(KEYBOARD_KEY_2);
+    keyEvent_S.setKey(KEYBOARD_KEY_S);
+    keyEvent_A.setKey(KEYBOARD_KEY_A);
+    keyEvent_numbers.push_back(Event(KEYBOARD_KEY_1));
+    keyEvent_numbers.push_back(Event(KEYBOARD_KEY_2));
+    keyEvent_numbers.push_back(Event(KEYBOARD_KEY_3));
     keyEvent_ENTER.setKey(KEYBOARD_KEY_ENTER);
 
-  //  loadFromImage(resourcePath+"\\Simkin_glider_gun.png",Vector2u(40,20));
-  //  loadFromImage(resourcePath+"\\Simkin_glider_gun.png",Vector2u(40,20));
 
+#ifdef BUILD_WITH_EASY_PROFILER
+    tickPause = false;
+    loadFromImage(resourcePath+"\\Netmaker.png",mapsize/2u-Vector2u(49,26)/2u);
+#endif
 
     while(engine->running())
     {
@@ -108,8 +148,10 @@ void userEventLoop(float tickInterval,unsigned long long tick,const vector<sf::E
     keyEvent_P.checkEvent();
     keyEvent_SPCAE.checkEvent();
     keyEvent_C.checkEvent();
-    keyEvent_1.checkEvent();
-    keyEvent_2.checkEvent();
+    keyEvent_S.checkEvent();
+    keyEvent_A.checkEvent();
+    for(Event & e:keyEvent_numbers)
+        e.checkEvent();
     keyEvent_ENTER.checkEvent();
 
     if(keyEvent_P.isSinking())
@@ -125,13 +167,42 @@ void userEventLoop(float tickInterval,unsigned long long tick,const vector<sf::E
     {
         clearMap();
     }
-    if(keyEvent_1.isSinking())
+    if(keyEvent_S.isSinking())
     {
-        loadFromImage(resourcePath+"\\Glider_gun.png",mapsize/2u-Vector2u(36,9)/2u);
+        saveToImage();
     }
-    if(keyEvent_2.isSinking())
+    if(keyEvent_A.isSinking())
     {
-        loadFromImage(resourcePath+"\\Simkin_glider_gun.png",mapsize/2u-Vector2u(33,21)/2u);
+        if(lastSavedImagePath == "")
+        {
+            qDebug() <<"No file exported";
+        }
+        else
+        {
+            qDebug() << "load File: "<<lastSavedImagePath.c_str();
+            loadFromImage(lastSavedImagePath,Vector2u(0,0));
+        }
+    }
+    for(size_t i=0;i<keyEvent_numbers.size(); i++)
+    {
+        if(keyEvent_numbers[i].isSinking())
+        {
+            switch(i)
+            {
+                case 0: // Taste "1"
+                    loadFromImage(resourcePath+"\\Glider_gun.png",mapsize/2u-Vector2u(36,9)/2u);
+                break;
+                case 1: // Taste "1"
+                    loadFromImage(resourcePath+"\\Simkin_glider_gun.png",mapsize/2u-Vector2u(33,21)/2u);
+                break;
+                case 2: // Taste "1"
+                    loadFromImage(resourcePath+"\\Netmaker.png",mapsize/2u-Vector2u(49,26)/2u);
+                break;
+                default:
+
+                break;
+            }
+        }
     }
     if(keyEvent_ENTER.isSinking())
     {
@@ -170,7 +241,6 @@ void userEventLoop(float tickInterval,unsigned long long tick,const vector<sf::E
             }
             case sf::Event::MouseMoved:
             {
-                //qDebug() << "mouse: "<<event.mouseMove.x<<" "<<event.mouseMove.y;
                 if(leftMouseKilckActive)
                 {
                     setTileAlive(Vector2i(event.mouseMove.x,event.mouseMove.y));
@@ -337,10 +407,10 @@ void loadFromImage(const string &image,Vector2u drawPos)
     sfImage.loadFromFile(image);
     Vector2u imageSize = sfImage.getSize();
 
-    if(drawPos.x + imageSize.x > map.size()-1)
-        drawPos.x = map.size()-imageSize.x-1;
-    if(drawPos.y + imageSize.y > map[0].size()-1)
-        drawPos.y = map.size()-imageSize.y-1;
+    if(drawPos.x + imageSize.x > map.size())
+        drawPos.x = map.size()-imageSize.x;
+    if(drawPos.y + imageSize.y > map[0].size())
+        drawPos.y = map.size()-imageSize.y;
 
     for(size_t x=0; x<imageSize.x; x++)
     {
@@ -357,4 +427,33 @@ void loadFromImage(const string &image,Vector2u drawPos)
             }
         }
     }
+}
+void saveToImage()
+{
+    string path     = outputPath;
+    std::time_t t   = std::time(0);   // get time now
+    std::tm* now    = std::localtime(&t);
+    string timeDate = to_string(now->tm_mday)+"."+to_string(now->tm_mon)+"."+to_string(now->tm_year)+"_";
+    timeDate       += to_string(now->tm_hour)+"."+to_string(now->tm_min)+"."+to_string(now->tm_sec)+"_";
+    saveToImage(path + "\\" + timeDate +to_string(engine->getTick()) + ".png" );
+}
+void saveToImage(const string &file)
+{
+    sf::Image image;
+    image.create(map.size(),map[0].size(),Color(0,0,0,0));
+
+    for(size_t x=0; x<map.size(); x++)
+    {
+        for(size_t y=0; y<map[x].size(); y++)
+        {
+            if(map[x][y]->getState() == Tile::dead)
+                continue;
+            Color col = map[x][y]->getColor();
+            if(col.r > 0 || col.g > 0 || col.b > 0)
+                image.setPixel(x,y,col);
+        }
+    }
+    lastSavedImagePath = file;
+    qDebug() << "Saving to: "<<file.c_str();
+    image.saveToFile(file);
 }
