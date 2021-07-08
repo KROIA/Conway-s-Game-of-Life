@@ -67,10 +67,7 @@ void saveToImage(const string &file);
 
 int main(int argc, char *argv[])
 {
-#ifdef BUILD_WITH_EASY_PROFILER
-    EASY_PROFILER_ENABLE;
-    EASY_MAIN_THREAD;
-#endif
+
 
     engine = new PixelEngine(mapsize,Vector2u(1900,1000));
 
@@ -138,10 +135,10 @@ int main(int argc, char *argv[])
            engine->stop();
 #endif
     }
-#ifdef BUILD_WITH_EASY_PROFILER
+/*#ifdef BUILD_WITH_EASY_PROFILER
     auto blocks_count = profiler::dumpBlocksToFile("profiler.prof");
     std::cout << "Profiler blocks count: " << blocks_count << std::endl;
-#endif
+#endif*/
 }
 void userEventLoop(float tickInterval,unsigned long long tick,const vector<sf::Event> &eventList)
 {
