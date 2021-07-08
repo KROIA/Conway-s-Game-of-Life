@@ -139,6 +139,7 @@ int main(int argc, char *argv[])
     auto blocks_count = profiler::dumpBlocksToFile("profiler.prof");
     std::cout << "Profiler blocks count: " << blocks_count << std::endl;
 #endif*/
+    delete engine;
 }
 void userEventLoop(float tickInterval,unsigned long long tick,const vector<sf::Event> &eventList)
 {
