@@ -40,7 +40,7 @@ Conway-s-Game-of-Life
   +- src
 ```
 
-Then compile the SFML and easy_profiler project first using the CMakeLists.txt the specific repo folder.
+Then compile the SFML and easy_profiler project first, using the CMakeLists.txt the specific repo folder.
 For this, you can follow the instructions from the [PixelEngine](https://github.com/KROIA/Pixelengine/tree/d10c1e8fcba5029a7794cb862f963208fe033726#sfml-info)<br>
 
 After that, you can compile this Project.
