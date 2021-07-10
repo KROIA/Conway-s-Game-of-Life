@@ -74,8 +74,11 @@ void saveToImage(const string &file);
 int main(int argc, char *argv[])
 {
 
+    PixelEngine::Settings settings  = PixelEngine::getSettings();
+    settings.display.windowSize     = Vector2u(1900,1000);
+    settings.display.pixelMapSize   = mapsize;
 
-    engine = new PixelEngine(mapsize,Vector2u(1900,1000));
+    engine = new PixelEngine(settings);
 
     GameObjectGroup *tiles = generateMap(mapsize);
     engine->addGameObject(tiles);
