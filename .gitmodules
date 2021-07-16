@@ -1,0 +1,3 @@
+[submodule "Extern/PixelEngine"]
+	path = Extern/PixelEngine
+	url = https://github.com/KROIA/Pixelengine
