@@ -1,3 +1,4 @@
+#define ENGINE_DISABLE_COLLISION
 #include "pixelengine.h"
 #include "tile.h"
 #include <math.h>
@@ -43,8 +44,9 @@ Event keyEvent_singleStep;
 vector<Event> keyEvent_numbers;
 vector<vector<Tile*>    > map;
 RectF mapFrame;
-DisplayText *displayText_pause;
-DisplayText *displayText_startInfo;
+TextPainter *displayText_pause;
+TextPainter *displayText_startInfo;
+VertexPathPainter *mapBorder;
 
 
 bool tickPause = true;
@@ -73,12 +75,13 @@ void saveToImage(const string &file);
 
 int main(int argc, char *argv[])
 {
-
     PixelEngine::Settings settings  = PixelEngine::getSettings();
     settings.display.windowSize     = Vector2u(1900,1000);
     settings.display.pixelMapSize   = mapsize;
 
     engine = new PixelEngine(settings);
+
+    mapBorder = new VertexPathPainter();
 
     GameObjectGroup *tiles = generateMap(mapsize);
     engine->addGameObject(tiles);
@@ -86,36 +89,39 @@ int main(int argc, char *argv[])
 
     if(syncMode)
     {
-        engine->set_setting_syncEngineInterval(0.02);
+        engine->set_setting_syncEngineInterval(0);
         engine->set_setting_runInSync(true);
     }
     else
     {
-        engine->set_setting_checkEventInterval(0.02);
-        engine->set_setting_displayInterval(0.01);
-        engine->set_setting_gameTickInterval(0.01);
+        engine->set_setting_checkEventInterval(1.f/20.f);
+        engine->set_setting_displayInterval(1.f/20.f);
+        engine->set_setting_gameTickInterval(0.0);
+        engine->set_setting_runInSync(false);
     }
     engine->setUserCheckEventLoop(userEventLoop);
     engine->setUserDisplayLoop(userDisplayLoop);
 
-    displayText_pause = new DisplayText();
+    displayText_pause = new TextPainter();
     displayText_pause->setCharacterSize(25);
     displayText_pause->setText("PAUSE (press space)");
     displayText_pause->setPos(Vector2f(engine->getWindowSize().x - displayText_pause->getText().getString().getSize()*(displayText_pause->getCharacterSize()-10),0));
     displayText_pause->setPositionFix(true);
     displayText_pause->setVisibility(true);
-    engine->addDisplayText(displayText_pause);
+    engine->addPainterToDisplay(displayText_pause);
 
-    displayText_startInfo = new DisplayText();
+    displayText_startInfo = new TextPainter();
     displayText_startInfo->setCharacterSize(18);
     displayText_startInfo->setText(startInfoText);
     displayText_startInfo->setPos(Vector2f(0,0));
     displayText_startInfo->setPositionFix(true);
     displayText_startInfo->setVisibility(true);
-    engine->addDisplayText(displayText_startInfo);
+    displayText_startInfo->setScale(1);
+    engine->addPainterToDisplay(displayText_startInfo);
 
-    engine->setup();
+    engine->addPainterToDisplay(mapBorder);
 
+    // Set keyevents
     keyEvent_P.setKey(KEYBOARD_KEY_P);
     keyEvent_SPCAE.setKey(KEYBOARD_KEY_SPACE);
     keyEvent_C.setKey(KEYBOARD_KEY_C);
@@ -129,44 +135,46 @@ int main(int argc, char *argv[])
     keyEvent_ENTER.setKey(KEYBOARD_KEY_ENTER);
     keyEvent_singleStep.setKey(KEYBOARD_KEY_ARROW_RIGHT);
 
+    engine->addEvent(&keyEvent_P);
+    engine->addEvent(&keyEvent_SPCAE);
+    engine->addEvent(&keyEvent_C);
+    engine->addEvent(&keyEvent_S);
+    engine->addEvent(&keyEvent_A);
+    engine->addEvent(&keyEvent_ENTER);
+    engine->addEvent(&keyEvent_singleStep);
+    for(Event & e:keyEvent_numbers)
+        engine->addEvent(&e);
+
+    engine->setup();
+
+
+
+
 
 #ifdef BUILD_WITH_EASY_PROFILER
     tickPause = false;
     loadFromImage(resourcePath+"\\Netmaker.png",mapsize/2u-Vector2u(49,26)/2u);
+    for(size_t x=0; x<map.size(); x++)
+    {
+        for(size_t y=0; y<map[x].size(); y++)
+        {
+            map[x][y]->setPause(tickPause);
+        }
+    }
 #endif
 
     while(engine->running())
     {
-        engine->checkEvent();
-        if(!tickPause || doSingleStep)
-        {
-            doSingleStep = false;
-            engine->tick();
-        }
-        engine->display();
+        engine->loop();
 #ifdef BUILD_WITH_EASY_PROFILER
         if(engine->getTick() > 20)
            engine->stop();
 #endif
     }
-/*#ifdef BUILD_WITH_EASY_PROFILER
-    auto blocks_count = profiler::dumpBlocksToFile("profiler.prof");
-    std::cout << "Profiler blocks count: " << blocks_count << std::endl;
-#endif*/
     delete engine;
 }
 void userEventLoop(float tickInterval,unsigned long long tick,const vector<sf::Event> &eventList)
 {
-    keyEvent_P.checkEvent();
-    keyEvent_SPCAE.checkEvent();
-    keyEvent_C.checkEvent();
-    keyEvent_S.checkEvent();
-    keyEvent_A.checkEvent();
-    for(Event & e:keyEvent_numbers)
-        e.checkEvent();
-    keyEvent_ENTER.checkEvent();
-    keyEvent_singleStep.checkEvent();
-
     if(keyEvent_P.isSinking())
     {
         engine->display_stats(keyEvent_P.getCounter_isSinking()%2);
@@ -175,6 +183,13 @@ void userEventLoop(float tickInterval,unsigned long long tick,const vector<sf::E
     {
         tickPause = !tickPause;
         displayText_pause->setVisibility(tickPause);
+        for(size_t x=0; x<map.size(); x++)
+        {
+            for(size_t y=0; y<map[x].size(); y++)
+            {
+                map[x][y]->setPause(tickPause);
+            }
+        }
     }
     if(keyEvent_C.isSinking())
     {
@@ -226,11 +241,29 @@ void userEventLoop(float tickInterval,unsigned long long tick,const vector<sf::E
     if(keyEvent_ENTER.isSinking())
     {
         if(keyEvent_ENTER.getCounter_isSinking() == 1)
-            engine->removeDisplayText(displayText_startInfo);
+            engine->removePainterFromDisplay(displayText_startInfo);
     }
     if(keyEvent_singleStep.isSinking())
     {
         doSingleStep = true;
+        if(tickPause)
+        {
+            for(size_t x=0; x<map.size(); x++)
+            {
+                for(size_t y=0; y<map[x].size(); y++)
+                {
+                    map[x][y]->setPause(false);
+                }
+            }
+            engine->loop();
+            for(size_t x=0; x<map.size(); x++)
+            {
+                for(size_t y=0; y<map[x].size(); y++)
+                {
+                    map[x][y]->setPause(true);
+                }
+            }
+        }
     }else
 
     for(const sf::Event &event : eventList)
@@ -284,7 +317,7 @@ void userEventLoop(float tickInterval,unsigned long long tick,const vector<sf::E
 }
 void userDisplayLoop(float tickInterval,unsigned long long tick,PixelDisplay &display)
 {
-    display.addVertexLine(mapFrame.getDrawable(Color(0,0,255)));
+    //display.addVertexLine(mapFrame.getDrawable(Color(0,0,255)));
 }
 
 void clearMap()
@@ -335,92 +368,67 @@ GameObjectGroup *generateMap(Vector2u size)
     qDebug() << "generateMap begin";
     GameObjectGroup *group = new GameObjectGroup();
 
-
     for(unsigned int x=0; x<size.x; x++)
     {
         map.push_back(vector<Tile*>());
         for(unsigned int y=0; y<size.y; y++)
         {
             Tile *tile = new Tile(Vector2u(x,y));
-            tile->setDead();
+            //tile->setDead();
             tile->setColorFadeFactor(colorFadeFactor);
             map[x].push_back(tile);  
         }
     }
+    qDebug() << "generateMap end";
+    qDebug() << "connect the tiles begin";
     mapFrame = RectF(0,0,size.x,size.y);
-
-    for(unsigned int x=1; x<map.size()-1; x++)
+    mapBorder->addPath(mapFrame.getDrawable());
+    for(unsigned int x=0; x<map.size(); x++)
     {
-        for(unsigned int y=1; y<map[x].size()-1; y++)
+        for(unsigned int y=0; y<map[x].size(); y++)
         {
-            map[x][y]->addNeighbour(map[x][y-1]);
-            map[x][y]->addNeighbour(map[x-1][y-1]);
-            map[x][y]->addNeighbour(map[x-1][y]);
-            map[x][y]->addNeighbour(map[x-1][y+1]);
-            map[x][y]->addNeighbour(map[x][y+1]);
-            map[x][y]->addNeighbour(map[x+1][y+1]);
-            map[x][y]->addNeighbour(map[x+1][y]);
-            map[x][y]->addNeighbour(map[x+1][y-1]);
+            int xLeft, xRight, yAbove, yBelow;
 
+            if(x == 0)
+                xLeft = size.x -1;
+            else
+                xLeft = -1;
+
+            if(x == (size.x - 1))
+                xRight = -(size.x - 1);
+            else
+                xRight = 1;
+
+            if(y == 0)
+                yAbove = size.y - 1;
+            else
+                yAbove = -1;
+
+            if(y == (size.y - 1))
+                yBelow = -(size.y - 1);
+            else
+                yBelow = 1;
+
+            map[x][y]->addneighbor(map[x+xLeft][y+yAbove]);
+            map[x][y]->addneighbor(map[x][y+yAbove]);
+            map[x][y]->addneighbor(map[x+xLeft][y]);
+            map[x][y]->addneighbor(map[x+xRight][y]);
+            map[x][y]->addneighbor(map[x+xLeft][y+yBelow]);
+            map[x][y]->addneighbor(map[x+xRight][y+yAbove]);
+            map[x][y]->addneighbor(map[x][y+yBelow]);
+            map[x][y]->addneighbor(map[x+xRight][y+yBelow]);
         }
     }
-    size_t lastIndexY = map[0].size()-1;
-    size_t lastIndexX = map.size()-1;
-    for(unsigned int x=1; x<map.size()-1; x++)
-    {
-        map[x][0]->addNeighbour(map[x][1]);
-        map[x][0]->addNeighbour(map[x-1][1]);
-        map[x][0]->addNeighbour(map[x+1][1]);
-        map[x][0]->addNeighbour(map[x+1][0]);
-        map[x][0]->addNeighbour(map[x-1][0]);
-
-
-        map[x][lastIndexY]->addNeighbour(map[x][lastIndexY-1]);
-        map[x][lastIndexY]->addNeighbour(map[x-1][lastIndexY-1]);
-        map[x][lastIndexY]->addNeighbour(map[x+1][lastIndexY-1]);
-        map[x][lastIndexY]->addNeighbour(map[x+1][lastIndexY]);
-        map[x][lastIndexY]->addNeighbour(map[x-1][lastIndexY]);
-    }
-    for(unsigned int y=1; y<map[0].size()-1; y++)
-    {
-        map[0][y]->addNeighbour(map[1][y]);
-        map[0][y]->addNeighbour(map[1][y-1]);
-        map[0][y]->addNeighbour(map[1][y+1]);
-        map[0][y]->addNeighbour(map[0][y+1]);
-        map[0][y]->addNeighbour(map[0][y-1]);
-
-
-        map[lastIndexX][y]->addNeighbour(map[lastIndexX-1][y]);
-        map[lastIndexX][y]->addNeighbour(map[lastIndexX-1][y-1]);
-        map[lastIndexX][y]->addNeighbour(map[lastIndexX-1][y+1]);
-        map[lastIndexX][y]->addNeighbour(map[lastIndexX  ][y+1]);
-        map[lastIndexX][y]->addNeighbour(map[lastIndexX  ][y-1]);
-    }
-    map[0][0]->addNeighbour( map[1][0]);
-    map[0][0]->addNeighbour( map[1][1]);
-    map[0][0]->addNeighbour( map[0][1]);
-
-    map[lastIndexX][0]->addNeighbour( map[lastIndexX-1][0]);
-    map[lastIndexX][0]->addNeighbour( map[lastIndexX-1][1]);
-    map[lastIndexX][0]->addNeighbour( map[lastIndexX][1]);
-
-    map[lastIndexX][lastIndexY]->addNeighbour( map[lastIndexX-1][lastIndexY]);
-    map[lastIndexX][lastIndexY]->addNeighbour( map[lastIndexX-1][lastIndexY-1]);
-    map[lastIndexX][lastIndexY]->addNeighbour( map[lastIndexX][lastIndexY-1]);
-
-    map[0][lastIndexY]->addNeighbour( map[1][lastIndexY]);
-    map[0][lastIndexY]->addNeighbour( map[1][lastIndexY-1]);
-    map[0][lastIndexY]->addNeighbour( map[0][lastIndexY-1]);
-
+    qDebug() << "connect the tiles end";
+    qDebug() << "add to group begin";
     for(unsigned int x=0; x<size.x; x++)
     {
         for(unsigned int y=0; y<size.y; y++)
         {
-
             group->add(map[x][y]);
         }
     }
-    qDebug() << "generateMap end";
+    qDebug() << "add to group end";
     return group;
 }
 
@@ -456,7 +464,7 @@ void saveToImage()
     string path     = outputPath;
     std::time_t t   = std::time(0);   // get time now
     std::tm* now    = std::localtime(&t);
-    string timeDate = to_string(now->tm_mday)+"."+to_string(now->tm_mon)+"."+to_string(now->tm_year)+"_";
+    string timeDate = to_string(now->tm_mday)+"."+to_string(now->tm_mon+1)+"."+to_string(now->tm_year+1900)+"_";
     timeDate       += to_string(now->tm_hour)+"."+to_string(now->tm_min)+"."+to_string(now->tm_sec)+"_";
     saveToImage(path + "\\" + timeDate +to_string(engine->getTick()) + ".png" );
 }

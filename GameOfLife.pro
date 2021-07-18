@@ -21,7 +21,8 @@ SOURCES += \
         $$srcPath/tile.cpp
 		
 HEADERS += \
-		$$incPath/tile.h
+		$$incPath/tile.h \
+		inc/pixelEngineSettings.h
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
