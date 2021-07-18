@@ -3,7 +3,7 @@
 #include "gameobject.h"
 #include "pixelPainter.h"
 
-//#define COLORED_TILE
+#define COLORED_TILE
 //#define SIMPLE_ALGORYTHM
 //#define   DISPLAY_NEIGHBOR_COUNT
 
@@ -53,9 +53,6 @@ class Tile  :   public GameObject
         void mixColors();
         void fadeColor(Color &c,float factor);
 #endif
-
-      //  PixelPainter *m_pixPainter_alive;
-      //  PixelPainter *m_pixPainter_dead;
         Color m_aliveColor;
         Color m_deadColor;
         Vector2u m_coord;

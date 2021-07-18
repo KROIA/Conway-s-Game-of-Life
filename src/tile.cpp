@@ -38,9 +38,6 @@ Tile::Tile(Vector2u coord)
     m_colorFadeFactor = 0.8;
     m_paused = true;
 
-    //m_pixPainter_alive = new PixelPainter();
-    //m_pixPainter_dead = new PixelPainter();
-
 }
 Tile::~Tile()
 {
@@ -54,21 +51,6 @@ Tile::~Tile()
 void Tile::setup()
 {
      GameObject::setPosInital(Vector2f(m_coord));
-
-
-  /*   m_pixPainter_alive->resize(Vector2u(1,1));
-     m_pixPainter_alive->setVisibility(false);
-     m_pixPainter_alive->setPos(Vector2f(m_coord));
-     m_pixPainter_alive->setPixelColor(Vector2u(0,0),m_aliveColor);
-     m_pixPainter_alive->update();
-
-     m_pixPainter_dead->resize(Vector2u(1,1));
-     m_pixPainter_dead->setVisibility(true);
-     m_pixPainter_dead->setPos(Vector2f(m_coord));
-     m_pixPainter_dead->setPixelColor(Vector2u(0,0),m_deadColor);
-     m_pixPainter_dead->update();
-     GameObject::addPainter(m_pixPainter_alive);
-     GameObject::addPainter(m_pixPainter_dead);*/
 #ifdef DISPLAY_NEIGHBOR_COUNT
     display.subscribePainter(m_textPainter);
 #endif
@@ -266,9 +248,6 @@ void Tile::preDraw()
     if(TILE_GET_IS_ALIVE(m_tileData))
     {
         GameObject::display_setPixel(m_coord,m_aliveColor);
-        //m_pixPainter_dead->setPixelColor(Vector2u(0,0),m_aliveColor);
-       // m_pixPainter_dead->setVisibility(false);
-        //m_pixPainter_alive->setVisibility(true);
     }
     else
     {
@@ -276,10 +255,6 @@ void Tile::preDraw()
         fadeColor(m_deadColor,m_colorFadeFactor);
 #endif
         GameObject::display_setPixel(m_coord,m_deadColor);
-        //m_pixPainter_dead->setPixelColor(Vector2u(0,0),m_deadColor);
-
-       // m_pixPainter_alive->setVisibility(false);
-        //m_pixPainter_dead->setVisibility(true);
     }
 #endif
 
