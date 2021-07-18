@@ -24,7 +24,7 @@
 
 
   // #define GAME_OBJECT_PROFILER
-  // #define PAINTER_PROFILER
+   #define PAINTER_PROFILER
   // #define TEXTURE_PROFILER
   // #define COLLIDER_PROFILER
   // #define CONTROLLER_PROFILER
