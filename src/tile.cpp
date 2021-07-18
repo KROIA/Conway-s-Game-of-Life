@@ -2,36 +2,85 @@
 
 float Tile::perlinXOffset = 0;
 float Tile::perlinYOffset = 0;
+
+#ifdef PIXELENGINE_USE_THREADS
+pthread_mutex_t Tile::mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
 Tile::Tile(Vector2u coord)
     :   GameObject()
 {
-    m_coord = coord;
-
-    GameObject::setPosInital(Vector2f(m_coord));
-    //m_collider->addHitbox(RectF(0,0,1,1));
-    m_neighbourList.reserve(8);
-
     m_deadColor = Color(0,0,0);
-
-    int r = rand()%3;
-    if(r == 0)
-        setDead();
-    else
-        setAlive();
-
+#ifndef COLORED_TILE
+    m_aliveColor = Color(255,255,255);
+#endif
+#ifdef SIMPLE_ALGORYTHM
+    m_state         = dead;
     m_nextTickState = m_state;
+#else
+    m_coord = coord;
+    m_maxneighborCount     = 8;
+    m_addedneighborIndex   = 0;
+    m_neighborList         = new unsigned char*[m_maxneighborCount];
+    m_tileData             = 0;
+    m_nextTickState        = dead;
+
+#endif
+#ifdef DISPLAY_NEIGHBOR_COUNT
+    m_textPainter           = new TextPainter();
+
+    m_textPainter->setVisibility(true);
+    m_textPainter->setColor(Color(100,100,100));
+    m_textPainter->setCharacterSize(40);
+    m_textPainter->setScale(Vector2f(0.02,0.02));
+    m_textPainter->setPos(Vector2f(coord)+Vector2f(0.25,0));
+#endif
+    m_activeneighborCount = 0;
     m_colorFadeFactor = 0.8;
-    //GameObject::setVisibility_collider_hitbox(true);
+    m_paused = true;
+}
+Tile::~Tile()
+{
+#ifndef SIMPLE_ALGORYTHM
+    delete[] m_neighborList;
+#endif
+#ifdef DISPLAY_NEIGHBOR_COUNT
+    delete m_textPainter;
+#endif
+}
+void Tile::setup()
+{
+     GameObject::setPosInital(Vector2f(m_coord));
+
+#ifdef DISPLAY_NEIGHBOR_COUNT
+    display.subscribePainter(m_textPainter);
+#endif
 }
 
-void Tile::addNeighbour(Tile *neighbour)
+void Tile::addneighbor(Tile *neighbor)
 {
-    if(neighbour != nullptr)
-        m_neighbourList.push_back(neighbour);
+    if(neighbor == nullptr)
+        return;
+#ifdef SIMPLE_ALGORYTHM
+    m_neighborTileList.push_back(neighbor);
+#else
+    if(m_addedneighborIndex >= m_maxneighborCount)
+        return;
+    m_neighborList[m_addedneighborIndex] = &neighbor->m_tileData;
+    m_addedneighborIndex++;
+#ifdef COLORED_TILE
+    m_neighborTileList.push_back(neighbor);
+#endif
+#endif
 }
-void Tile::setNeighbourList(const vector<Tile*> &list)
+void Tile::setneighborList(const vector<Tile*> &list)
 {
-    m_neighbourList = list;
+#ifdef SIMPLE_ALGORYTHM
+    m_neighborTileList = list;
+#else
+    for(size_t i=0; i<list.size(); i++)
+        addneighbor(list[i]);
+#endif
+
 }
 void Tile::setColorFadeFactor(float factor)
 {
@@ -43,9 +92,13 @@ const Vector2u &Tile::getCoord() const
 {
     return m_coord;
 }
-const Tile::State &Tile::getState() const
+bool Tile::getState() const
 {
+#ifdef SIMPLE_ALGORYTHM
     return m_state;
+#else
+    return (bool)TILE_GET_IS_ALIVE(m_tileData);
+#endif
 }
 const Color    &Tile::getAliveColor() const
 {
@@ -53,104 +106,275 @@ const Color    &Tile::getAliveColor() const
 }
 const Color    &Tile::getColor() const
 {
+#ifdef SIMPLE_ALGORYTHM
     if(m_state == alive)
         return m_aliveColor;
     return m_deadColor;
+#else
+    if((TILE_GET_IS_ALIVE(m_tileData)))
+        return m_aliveColor;
+    return m_deadColor;
+#endif
 }
 void Tile::prepareForNextMove()
 {
-    int aliveNeighbourCount = 0;
+
+
+#ifdef SIMPLE_ALGORYTHM
+
+#ifdef COLORED_TILE
     m_colorList.clear();
     m_colorList.reserve(8);
-    for(size_t i=0; i<m_neighbourList.size(); i++)
+#endif
+    m_activeneighborCount = 0;
+    for(size_t i=0; i<m_neighborTileList.size(); i++)
     {
-        if(m_neighbourList[i]->getState() == alive)
+        if(m_neighborTileList[i]->getState() == alive)
         {
 
-            aliveNeighbourCount++;
-            m_colorList.push_back(m_neighbourList[i]->getAliveColor());
+            m_activeneighborCount++;
+#ifdef COLORED_TILE
+            m_colorList.push_back(m_neighborTileList[i]->getAliveColor());
+#endif
         }
     }
 
-    if(aliveNeighbourCount == 3 &&
+    if(m_activeneighborCount == 3 &&
        m_state == dead)
     {
         m_nextTickState = alive;
-    }else if(aliveNeighbourCount < 2 &&
+    }else if(m_activeneighborCount < 2 &&
              m_state == alive)
     {
         m_nextTickState = dead;
-    }if((aliveNeighbourCount == 2 ||
-         aliveNeighbourCount == 3) &&
+    }if((m_activeneighborCount == 2 ||
+         m_activeneighborCount == 3) &&
          m_state == alive)
     {
         m_nextTickState = alive;
-    }else if(aliveNeighbourCount > 3)
+    }else if(m_activeneighborCount > 3)
     {
         m_nextTickState = dead;
     }
-
+#ifdef COLORED_TILE
     if(m_state == alive && m_nextTickState == dead)
         m_deadColor = m_aliveColor;
+#endif
+#else
+#ifdef COLORED_TILE
+    m_colorList.clear();
+    m_colorList.reserve(8);
+    for(size_t i=0; i<m_neighborTileList.size(); i++)
+    {
+        if((TILE_GET_IS_ALIVE(m_neighborTileList[i]->m_tileData)))
+        {
+            m_colorList.push_back(m_neighborTileList[i]->getAliveColor());
+        }
+    }
+#endif
 
+    if(!m_tileData)
+    {
+        return;
+    }
+
+    m_activeneighborCount = m_tileData >> 1;
+
+    if(TILE_GET_IS_ALIVE(m_tileData))
+    {
+        if(m_activeneighborCount != 2 && m_activeneighborCount != 3)
+        {
+            m_nextTickState = dead;
+#ifdef COLORED_TILE
+            m_deadColor = m_aliveColor;
+#endif
+        }
+    }
+    else
+    {
+        if(m_activeneighborCount == 3)
+        {
+            m_nextTickState = alive;
+        }
+    }
+
+#endif
 }
+
 void Tile::tick(const Vector2i &direction)
 {
+    if(m_paused)
+        return;
     if(direction.x)
     {
         prepareForNextMove();
     }
     else
     {
-       /* if(m_coord.x == 0 && m_coord.y == 0)
-        {
-            perlinXOffset+= 0.01;
-            perlinYOffset+= 0.01;
-           // qDebug() << perlinXOffset;
-        }*/
 
+#ifdef COLORED_TILE
         mixColors();
+#endif
+#ifdef SIMPLE_ALGORYTHM
         m_state = m_nextTickState;
+#else
+        bool lastAlive = TILE_GET_IS_ALIVE(m_tileData);
+        if(m_nextTickState != lastAlive)
+        {
+            if(m_nextTickState)
+                setAlive(m_aliveColor);
+            else
+                setDead();
+        }
+#endif
     }
 }
-void Tile::draw(PixelDisplay &display)
+void Tile::preDraw()
 {
+#ifdef SIMPLE_ALGORYTHM
     if(m_state == dead)
     {
+#ifdef COLORED_TILE
         fadeColor(m_deadColor,m_colorFadeFactor);
-        display.setPixel(Vector2i(m_coord),m_deadColor);
+#endif
+        GameObject::display_setPixel(m_coord,m_deadColor);
     }
     else
     {
-
-        display.setPixel(Vector2i(m_coord),m_aliveColor);
+        GameObject::display_setPixel(m_coord,m_aliveColor);
     }
-    //GameObject::draw(display);
+#else
+    m_activeneighborCount = m_tileData >> 1;
+    if(TILE_GET_IS_ALIVE(m_tileData))
+    {
+        GameObject::display_setPixel(m_coord,m_aliveColor);
+    }
+    else
+    {
+#ifdef COLORED_TILE
+        fadeColor(m_deadColor,m_colorFadeFactor);
+#endif
+        GameObject::display_setPixel(m_coord,m_deadColor);
+    }
+#endif
+
+#ifdef DISPLAY_NEIGHBOR_COUNT
+    m_textPainter->setText(std::to_string(m_activeneighborCount));
+#endif
 }
 void Tile::setAlive()
 {
+   // qDebug() << "set alive: "<<m_coord.x<<" "<<m_coord.y;
+#ifdef SIMPLE_ALGORYTHM
     m_state = alive;
     m_nextTickState = alive;
+#else
+    if(TILE_GET_IS_ALIVE(m_tileData))
+        return;
+#ifdef PIXELENGINE_USE_THREADS
+     pthread_mutex_lock(&mutex);
+#endif
+     TILE_SET_ALIVE(m_tileData);
+#ifdef PIXELENGINE_USE_THREADS
+     pthread_mutex_unlock(&mutex);
+#endif
+    tellneighbor();
+    m_nextTickState = alive;
+
+    //TILE_TELL_neighbor(*(m_neighborList+i),m_tileData);i++;
+#endif
+#ifdef COLORED_TILE
     float scale = 50;
     float offset = 30;
     float colorStrength = 128;
     m_aliveColor.r =(1+perlin((float)m_coord.x/scale+perlinXOffset,(float)m_coord.y/scale+perlinYOffset))*colorStrength;
     m_aliveColor.g =(1+perlin((float)m_coord.x/scale+offset+perlinXOffset,(float)m_coord.y/scale+offset+perlinYOffset))*colorStrength;;
     m_aliveColor.b =(1+perlin((float)m_coord.x/scale+2*offset+perlinXOffset,(float)m_coord.y/scale+2*offset+perlinYOffset))*colorStrength;
-
+#endif
 
 }
 void Tile::setAlive(const Color &color)
 {
+#ifdef SIMPLE_ALGORYTHM
     m_state = alive;
     m_nextTickState = alive;
+#else
+
+    if(TILE_GET_IS_ALIVE(m_tileData))
+        return;
+#ifdef PIXELENGINE_USE_THREADS
+     pthread_mutex_lock(&mutex);
+#endif
+     TILE_SET_ALIVE(m_tileData);
+#ifdef PIXELENGINE_USE_THREADS
+     pthread_mutex_unlock(&mutex);
+#endif
+
+    tellneighbor();
+    m_nextTickState = alive;
+#endif
+#ifdef COLORED_TILE
     m_aliveColor = color;
+#endif
 }
 void Tile::setDead()
 {
+#ifdef SIMPLE_ALGORYTHM
     m_nextTickState = dead;
     m_state = dead;
+#else
+    if(!(TILE_GET_IS_ALIVE(m_tileData)))
+        return;
+#ifdef PIXELENGINE_USE_THREADS
+     pthread_mutex_lock(&mutex);
+#endif
+     TILE_SET_DEAD(m_tileData);
+#ifdef PIXELENGINE_USE_THREADS
+     pthread_mutex_unlock(&mutex);
+#endif
+
+    m_nextTickState = dead;
+    tellneighbor();
+#endif
 }
+void Tile::setPause(bool paused)
+{
+    m_paused = paused;
+}
+
+#ifndef SIMPLE_ALGORYTHM
+inline void Tile::tellneighbor()
+{
+    if((TILE_GET_IS_ALIVE(m_tileData)))
+    {
+        for(size_t i=0; i<m_addedneighborIndex; i++)
+        {
+#ifdef PIXELENGINE_USE_THREADS
+            pthread_mutex_lock(&mutex);
+#endif
+            *(m_neighborList[i]) += 0x02;
+#ifdef PIXELENGINE_USE_THREADS
+            pthread_mutex_unlock(&mutex);
+#endif
+        }
+    }
+    else
+    {
+        for(size_t i=0; i<m_addedneighborIndex; i++)
+        {
+#ifdef PIXELENGINE_USE_THREADS
+            pthread_mutex_lock(&mutex);
+#endif
+            *(m_neighborList[i]) -= 0x02;
+#ifdef PIXELENGINE_USE_THREADS
+            pthread_mutex_unlock(&mutex);
+#endif
+        }
+    }
+}
+#endif
+
+#ifdef COLORED_TILE
 void Tile::mixColors()
 {
     if(m_colorList.size() == 0)
@@ -162,7 +386,11 @@ void Tile::mixColors()
     float offset = 10;
 
     float colorStrength = 5;
+#ifdef SIMPLE_ALGORYTHM
     if(m_state == dead)
+#else
+    if(!(TILE_GET_IS_ALIVE(m_tileData)))
+#endif
     {
         r= (1+perlin((float)m_coord.x/scale+perlinXOffset,(float)m_coord.y/scale+perlinYOffset))*colorStrength;
         g= (1+perlin((float)m_coord.x/scale+offset+perlinXOffset,(float)m_coord.y/scale+offset+perlinYOffset))*colorStrength;;
@@ -254,3 +482,4 @@ float perlin(float x, float y) {
     value = interpolate(ix0, ix1, sy);
     return value;
 }
+#endif

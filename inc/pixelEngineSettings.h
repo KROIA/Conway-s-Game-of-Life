@@ -1,0 +1,51 @@
+#ifndef PIXELENGINESETTINGS_H
+#define PIXELENGINESETTINGS_H
+
+// Timing
+#define PIXELENGINE_NO_TIMED_LOOPS
+
+// Performance
+#define PIXELENGINE_USE_THREADS
+
+// Physics
+//#define PIXELENGINE_ENABLE_COLLISION
+//#define PIXELENGINE_ENABLE_GAME_OBJECT_EVENTS
+
+
+// Debuging
+#define PIXELENGINE_STATISTICS
+//#define PIXELENGINE_DBUG_THREAD
+
+
+
+#ifdef BUILD_WITH_EASY_PROFILER
+
+  // #define PROFILE_ALL
+
+
+  // #define GAME_OBJECT_PROFILER
+  // #define PAINTER_PROFILER
+  // #define TEXTURE_PROFILER
+  // #define COLLIDER_PROFILER
+  // #define CONTROLLER_PROFILER
+  // #define EVENT_PROFILER
+  // #define TIMER_PROFILER
+
+  //  #define THREAD_PROFILER
+    #define ENGINE_PROFILER
+  //  #define ENGINE_DEEP_TICK_PROFILER
+  //  #define DISPLAY_PROFILER
+  //  #define MATHFUNCTION_PROFILER
+    #define LEVEL_PROFILER
+    #define MAIN_PROFILER
+
+#endif
+
+
+#ifdef BUILD_WITH_EASY_PROFILER
+    #define PIXELENGINE_NO_TIMED_LOOPS
+#endif
+
+
+
+#endif // PIXELENGINESETTINGS_H
