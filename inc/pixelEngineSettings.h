@@ -25,6 +25,8 @@
 
   // #define GAME_OBJECT_PROFILER
    #define PAINTER_PROFILER
+  // #define SUBMODULE_PROFILER
+  // #define SENSOR_PROFILER
   // #define TEXTURE_PROFILER
   // #define COLLIDER_PROFILER
   // #define CONTROLLER_PROFILER
