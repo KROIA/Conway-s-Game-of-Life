@@ -25,6 +25,8 @@ const string startInfoText =
         string("C     |   Clears the map\n") +
         string("S     |   Saves the current map to an image in the Folder: "+outputPath+"\n") +
         string("A     |   Will load the last saved map\n") +
+        string("O     |   Will open the filebrowser, so you can load images\n") +
+        string("      |   Move the mouse for positioning the image, rotate by right click and placing by left click.\n") +
         string("-->   |   Will step one step forward\n") +
         string("ENTER |   Will remove this infotext\n") +
         string("\nMouse:\n")+
@@ -42,11 +44,25 @@ Event keyEvent_A;
 Event keyEvent_ENTER;
 Event keyEvent_singleStep;
 vector<Event> keyEvent_numbers;
+Event keyEvent_ESCAPE;
+
+// Insert a specific image
+Event keyEvent_O;
+
+bool insertingImageMode = false;
+int insertingImageRotation = 0;
+std::string insertingImagePath = "";
+GameObject *insertingImageObj;
+Vector2u insertingImageSize;
+//--------
+
+
 vector<vector<Tile*>    > map;
 RectF mapFrame;
 TextPainter *displayText_pause;
 TextPainter *displayText_startInfo;
 VertexPathPainter *mapBorder;
+
 
 
 bool tickPause = true;
@@ -60,7 +76,7 @@ GameObjectGroup *generateMap(Vector2u size);
 void clearMap();
 void setTileAlive(Vector2i mousePos);
 void setTileDead(Vector2i mousePos);
-Vector2u getTilePos(Vector2i mousePos,bool &outOfArea);
+Vector2i getTilePos(Vector2i mousePos);
 
 
 // These functions will later be called from the engine
@@ -68,18 +84,24 @@ Vector2u getTilePos(Vector2i mousePos,bool &outOfArea);
 void userEventLoop(float tickInterval,unsigned long long tick,const vector<sf::Event> &eventList);
 void userDisplayLoop(float tickInterval,unsigned long long tick,PixelDisplay &display);
 
-void loadFromImage(const string &image,Vector2u drawPos);
+void loadFromImage(const string &image,Vector2i drawPos,Origin origin,int rotation = 0);
 void saveToImage();
 void saveToImage(const string &file);
 
 
 int main(int argc, char *argv[])
 {
+
+ //   qDebug()<<FileBrowser::getFile("C:\\Users\\alexk\\Documents\\Privat\\Softwareentwicklung\\QT\\Projekte\\Pixelengine\\src\\utility").c_str();
+ //   getchar();
     PixelEngine::Settings settings  = PixelEngine::getSettings();
-    settings.display.windowSize     = Vector2u(1900,1000);
+    settings.display.windowSize     = Vector2u(1900*2,1000*2);
     settings.display.pixelMapSize   = mapsize;
 
     engine = new PixelEngine(settings);
+    engine->setIcon(resourcePath+"\\icon.png");
+    engine->setTitle("Conway's game of life");
+
 
     mapBorder = new VertexPathPainter();
 
@@ -127,6 +149,7 @@ int main(int argc, char *argv[])
     keyEvent_C.setKey(KEYBOARD_KEY_C);
     keyEvent_S.setKey(KEYBOARD_KEY_S);
     keyEvent_A.setKey(KEYBOARD_KEY_A);
+    keyEvent_O.setKey(KEYBOARD_KEY_O);
     keyEvent_numbers.push_back(Event(KEYBOARD_KEY_1));
     keyEvent_numbers.push_back(Event(KEYBOARD_KEY_2));
     keyEvent_numbers.push_back(Event(KEYBOARD_KEY_3));
@@ -134,14 +157,17 @@ int main(int argc, char *argv[])
     keyEvent_numbers.push_back(Event(KEYBOARD_KEY_5));
     keyEvent_ENTER.setKey(KEYBOARD_KEY_ENTER);
     keyEvent_singleStep.setKey(KEYBOARD_KEY_ARROW_RIGHT);
+    keyEvent_ESCAPE.setKey(KEYBOARD_KEY_ESCAPE);
 
     engine->addEvent(&keyEvent_P);
     engine->addEvent(&keyEvent_SPCAE);
     engine->addEvent(&keyEvent_C);
     engine->addEvent(&keyEvent_S);
     engine->addEvent(&keyEvent_A);
+    engine->addEvent(&keyEvent_O);
     engine->addEvent(&keyEvent_ENTER);
     engine->addEvent(&keyEvent_singleStep);
+    engine->addEvent(&keyEvent_ESCAPE);
     for(Event & e:keyEvent_numbers)
         engine->addEvent(&e);
 
@@ -208,7 +234,7 @@ void userEventLoop(float tickInterval,unsigned long long tick,const vector<sf::E
         else
         {
             qDebug() << "load File: "<<lastSavedImagePath.c_str();
-            loadFromImage(lastSavedImagePath,Vector2u(0,0));
+            loadFromImage(lastSavedImagePath,Vector2i(0,0),Origin::topLeft);
         }
     }
     for(size_t i=0;i<keyEvent_numbers.size(); i++)
@@ -218,24 +244,57 @@ void userEventLoop(float tickInterval,unsigned long long tick,const vector<sf::E
             switch(i)
             {
                 case 0: // Taste "1"
-                    loadFromImage(resourcePath+"\\Glider_gun.png",mapsize/2u-Vector2u(36,9)/2u);
+                    loadFromImage(resourcePath+"\\Glider_gun.png",Vector2i(mapsize/2u)-Vector2i(36,9)/2,Origin::topLeft);
                 break;
                 case 1: // Taste "1"
-                    loadFromImage(resourcePath+"\\Simkin_glider_gun.png",mapsize/2u-Vector2u(33,21)/2u);
+                    loadFromImage(resourcePath+"\\Simkin_glider_gun.png",Vector2i(mapsize/2u)-Vector2i(33,21)/2,Origin::topLeft);
                 break;
                 case 2: // Taste "1"
-                    loadFromImage(resourcePath+"\\Netmaker.png",mapsize/2u-Vector2u(49,26)/2u);
+                    loadFromImage(resourcePath+"\\Netmaker.png",Vector2i(mapsize/2u)-Vector2i(49,26)/2,Origin::topLeft);
                 break;
                 case 3:
-                    loadFromImage(resourcePath+"\\frothing_spaceship.png",mapsize/2u-Vector2u(33,23)/2u);
+                    loadFromImage(resourcePath+"\\frothing_spaceship.png",Vector2i(mapsize/2u)-Vector2i(33,23)/2,Origin::topLeft);
                 break;
                 case 4:
-                    loadFromImage(resourcePath+"\\Sun.png",mapsize/2u-Vector2u(33,23)/2u);
+                    loadFromImage(resourcePath+"\\Sun.png",Vector2i(mapsize/2u)-Vector2i(33,23)/2,Origin::topLeft);
                 break;
                 default:
 
                 break;
             }
+        }
+    }
+    if(keyEvent_O.isSinking())
+    {
+        if(!insertingImageMode)
+        {
+            insertingImagePath = FileBrowser::getFile("");
+            insertingImageMode = true;
+
+            Texture *texture = new Texture();
+            TexturePainter *texPainter = new TexturePainter();
+            texture->loadTexture(insertingImagePath);
+            insertingImageSize = texture->getSize();
+
+            texture->setOriginType(Origin::center);
+            texPainter->setTexture(texture);
+
+            insertingImageObj = new GameObject();
+            insertingImageObj->addPainter(texPainter);
+            insertingImageObj->setRenderLayer(RenderLayerIndex::vertexPaths);
+            insertingImageObj->setPosInitial(Vector2f(-5,-5));
+            engine->addGameObject(insertingImageObj);
+
+            //loadFromImage(filePath,Vector2u(0,0));
+        }
+    }
+    if(keyEvent_ESCAPE.isSinking())
+    {
+        if(insertingImageMode)
+        {
+            engine->removeGameObject(insertingImageObj);
+            insertingImageMode     = false;
+            insertingImageRotation = 0;
         }
     }
     if(keyEvent_ENTER.isSinking())
@@ -264,7 +323,7 @@ void userEventLoop(float tickInterval,unsigned long long tick,const vector<sf::E
                 }
             }
         }
-    }else
+    }
 
     for(const sf::Event &event : eventList)
     {
@@ -272,38 +331,72 @@ void userEventLoop(float tickInterval,unsigned long long tick,const vector<sf::E
         {
             case sf::Event::MouseButtonPressed:
             {
-                if(event.mouseButton.button == sf::Mouse::Button::Left)
+                if(insertingImageMode)
                 {
-                    leftMouseKilckActive = true;
-                }else if(event.mouseButton.button == sf::Mouse::Button::Right)
+                    if(event.mouseButton.button == sf::Mouse::Button::Right)
+                    {
+                        insertingImageRotation ++;
+                        insertingImageRotation = insertingImageRotation%4;
+                        insertingImageObj->rotate_90();
+                    }
+                    if(event.mouseButton.button == sf::Mouse::Button::Left)
+                    {
+                        //insertingImageObj->setPos(Vector2f(getTilePos(Vector2i(event.mouseButton.x,event.mouseButton.y))));
+                        loadFromImage(insertingImagePath,
+                                      getTilePos(Vector2i(event.mouseButton.x,event.mouseButton.y)),
+                                      Origin::center,
+                                      insertingImageRotation);
+                    }
+                }
+                else
                 {
-                    rightMouseKilckActive = true;
+                    if(event.mouseButton.button == sf::Mouse::Button::Left)
+                    {
+                        leftMouseKilckActive = true;
+                    }else if(event.mouseButton.button == sf::Mouse::Button::Right)
+                    {
+                        rightMouseKilckActive = true;
+                    }
                 }
                 break;
             }
             case sf::Event::MouseButtonReleased:
             {
-                if(event.mouseButton.button == sf::Mouse::Button::Left)
+                if(insertingImageMode)
                 {
-                    leftMouseKilckActive = false;
-                    setTileAlive(Vector2i(event.mouseButton.x,event.mouseButton.y));
+
                 }
-                if(event.mouseButton.button == sf::Mouse::Button::Right)
+                else
                 {
-                    rightMouseKilckActive = false;
-                    setTileDead(Vector2i(event.mouseButton.x,event.mouseButton.y));
+                    if(event.mouseButton.button == sf::Mouse::Button::Left)
+                    {
+                        leftMouseKilckActive = false;
+                        setTileAlive(Vector2i(event.mouseButton.x,event.mouseButton.y));
+                    }
+                    if(event.mouseButton.button == sf::Mouse::Button::Right)
+                    {
+                        rightMouseKilckActive = false;
+                        setTileDead(Vector2i(event.mouseButton.x,event.mouseButton.y));
+                    }
                 }
                 break;
             }
             case sf::Event::MouseMoved:
             {
-                if(leftMouseKilckActive)
+                if(insertingImageMode)
                 {
-                    setTileAlive(Vector2i(event.mouseMove.x,event.mouseMove.y));
+                    insertingImageObj->setPos(Vector2f(getTilePos(Vector2i(event.mouseMove.x,event.mouseMove.y))));
                 }
-                if(rightMouseKilckActive)
+                else
                 {
-                    setTileDead(Vector2i(event.mouseMove.x,event.mouseMove.y));
+                    if(leftMouseKilckActive)
+                    {
+                        setTileAlive(Vector2i(event.mouseMove.x,event.mouseMove.y));
+                    }
+                    if(rightMouseKilckActive)
+                    {
+                        setTileDead(Vector2i(event.mouseMove.x,event.mouseMove.y));
+                    }
                 }
                 break;
             }
@@ -332,23 +425,17 @@ void clearMap()
 }
 void setTileAlive(Vector2i mousePos)
 {
-    bool outOfArea;
-    Vector2u tile = getTilePos(mousePos,outOfArea);
-    if(outOfArea)
-        return;
+    Vector2i tile = getTilePos(mousePos);
     map[tile.x][tile.y]->setAlive();
 }
 void setTileDead(Vector2i mousePos)
 {
-    {
-        bool outOfArea;
-        Vector2u tile = getTilePos(mousePos,outOfArea);
-        if(outOfArea)
-            return;
-        map[tile.x][tile.y]->setDead();
-    }
+
+    Vector2i tile = getTilePos(mousePos);
+    map[tile.x][tile.y]->setDead();
+
 }
-Vector2u getTilePos(Vector2i mousePos,bool &outOfArea)
+Vector2i getTilePos(Vector2i mousePos)
 {
     Vector2u windowSize = engine->getWindowSize();
     RectF frame = engine->getRenderFrame();
@@ -356,12 +443,17 @@ Vector2u getTilePos(Vector2i mousePos,bool &outOfArea)
    // qDebug() << "relative: "<<relativePos.x<<" "<<relativePos.y;
     Vector2i tilePos(relativePos.x*frame.getSize().x+frame.getPos().x, relativePos.y*frame.getSize().y+frame.getPos().y);
    // qDebug() << "mouse: "<<mousePos.x<<" "<<mousePos.y;
-    outOfArea = false;
-    if(tilePos.x < 0 || (size_t)tilePos.x >= map.size())
-        outOfArea = true;
-    if(tilePos.y < 0 || (size_t)tilePos.y >= map[0].size())
-        outOfArea = true;
-    return Vector2u(tilePos);
+
+
+    if(tilePos.x < 0)
+        tilePos.x = tilePos.x + map.size();
+    if(tilePos.y < 0)
+        tilePos.y = tilePos.y + map[0].size();
+
+    tilePos.x = tilePos.x%map.size();
+    tilePos.y = tilePos.y%map[0].size();
+
+    return Vector2i(tilePos);
 }
 GameObjectGroup *generateMap(Vector2u size)
 {
@@ -432,29 +524,94 @@ GameObjectGroup *generateMap(Vector2u size)
     return group;
 }
 
-void loadFromImage(const string &image,Vector2u drawPos)
+void loadFromImage(const string &image,Vector2i drawPos,Origin origin,int rotation)
 {
     sf::Image sfImage;
     sfImage.loadFromFile(image);
     Vector2u imageSize = sfImage.getSize();
+    Vector2i orientationOriginOffset;
 
-    if(drawPos.x + imageSize.x > map.size())
-        drawPos.x = map.size()-imageSize.x;
-    if(drawPos.y + imageSize.y > map[0].size())
-        drawPos.y = map.size()-imageSize.y;
+
 
     for(size_t x=0; x<imageSize.x; x++)
     {
         for(size_t y=0; y<imageSize.y; y++)
         {
             Color col = sfImage.getPixel(x,y);
+            int rotatedX = 0;
+            int rotatedY = 0;
+
+            switch(rotation)
+            {
+                case 0:
+                    rotatedX = x;
+                    rotatedY = y;
+
+                    orientationOriginOffset.x = -imageSize.x;
+                    orientationOriginOffset.y = -imageSize.y;
+                break;
+                case 1:
+                    rotatedX = -y-1;
+                    rotatedY = -x+imageSize.x-1;
+
+                    orientationOriginOffset.x =  imageSize.y;
+                    orientationOriginOffset.y = -imageSize.x;
+                break;
+                case 2:
+                    rotatedX = -x-1;
+                    rotatedY = -y-1;
+
+                    orientationOriginOffset.x = imageSize.x;
+                    orientationOriginOffset.y = imageSize.y;
+                break;
+                case 3:
+                    rotatedX = y;
+                    rotatedY = x-imageSize.x;
+
+                    orientationOriginOffset.x = -imageSize.y;
+                    orientationOriginOffset.y =  imageSize.x;
+                break;
+            }
+            switch(origin)
+            {
+                case Origin::topLeft:
+                break;
+                case Origin::topRight:
+                    rotatedX += orientationOriginOffset.x;
+                break;
+                case Origin::bottomLeft:
+                    rotatedY += orientationOriginOffset.y;
+                break;
+                case Origin::bottomRight:
+                    rotatedX += orientationOriginOffset.x;
+                    rotatedY += orientationOriginOffset.y;
+                break;
+                case Origin::center:
+                    rotatedX += orientationOriginOffset.x/2;
+                    rotatedY += orientationOriginOffset.y/2;
+                break;
+                default:
+                break;
+            }
+
             if(col.a < 100 || (col.r == 0 && col.g == 0 && col.b == 0))
             {   // Don't add Pixels below this alpha value
-               map[x+drawPos.x][y+drawPos.y]->setDead();
+            //     map[(x+drawPos.x)%map.size()][(y+drawPos.y)%map[0].size()]->setDead();
             }
             else
             {
-                map[x+drawPos.x][y+drawPos.y]->setAlive(col);
+                int posX = (drawPos.x + rotatedX + map.size()) % map.size();
+                int posY = (drawPos.y + rotatedY + map[0].size()) % map[0].size();
+
+               /* if(rotatedX < 0)
+                    rotatedX = rotatedY + map.size();
+                if(rotatedY < 0)
+                    rotatedY = rotatedY + map[0].size();
+
+                rotatedX = rotatedX%map.size();
+                rotatedY = rotatedY%map[0].size();*/
+
+                map[posX][posY]->setAlive(col);
             }
         }
     }

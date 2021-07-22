@@ -50,7 +50,7 @@ Tile::~Tile()
 }
 void Tile::setup()
 {
-     GameObject::setPosInital(Vector2f(m_coord));
+     GameObject::setPosInitial(Vector2f(m_coord));
 #ifdef DISPLAY_NEIGHBOR_COUNT
     display.subscribePainter(m_textPainter);
 #endif
