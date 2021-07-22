@@ -95,7 +95,8 @@ int main(int argc, char *argv[])
  //   qDebug()<<FileBrowser::getFile("C:\\Users\\alexk\\Documents\\Privat\\Softwareentwicklung\\QT\\Projekte\\Pixelengine\\src\\utility").c_str();
  //   getchar();
     PixelEngine::Settings settings  = PixelEngine::getSettings();
-    settings.display.windowSize     = Vector2u(1900*2,1000*2);
+    float windowScale = 1;
+    settings.display.windowSize     = Vector2u(1900*windowScale,1000*windowScale);
     settings.display.pixelMapSize   = mapsize;
 
     engine = new PixelEngine(settings);
