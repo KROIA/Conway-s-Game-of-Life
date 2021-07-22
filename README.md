@@ -5,9 +5,11 @@ This is a small Example using the [Pixelengine](https://github.com/KROIA/Pixelen
 ## Overview
 Play with the interactive Game of Life implementation, create your own creations and watch them evolve<br>
 ### Features
-* Pause and Play the game using the space key.<br>
-* Leftklick for adding a living cell and rightklick to kill a cell.<br>
+* Pause and Play the game.<br>
+* Add or kill living cells per mouseclick.<br>
 * Edit the map, insert stored images to the map.<br>
+* Safe the map to an image.<br>
+* Just play around.<br>
 
 ### Keybinding:<br>
 
