@@ -4,9 +4,16 @@
 #include <math.h>
 
 #include "QDebug"
+//#define RELEASE_COMPILE
 
-const string resourcePath = "..\\..\\resources"; // Where your images are stored
-const string outputPath   = "..\\..\\resources\\output"; // Where your images will be exported to
+#ifdef RELEASE_COMPILE
+string resourcePath = "resources"; // Where your images are stored
+string outputPath   = "resources\\output"; // Where your images will be exported to
+#else
+string resourcePath = "..\\..\\resources"; // Where your images are stored
+string outputPath   = "..\\..\\resources\\output"; // Where your images will be exported to
+#endif
+string progExecPath;
 const Vector2u mapsize(500,500);    // Mapsize for the game
 float colorFadeFactor = 0.7; // Factor how fast a dead cell will go to the color black. 1-> never, 0->instent
 bool syncMode = true;
@@ -92,10 +99,30 @@ void saveToImage(const string &file);
 int main(int argc, char *argv[])
 {
 
- //   qDebug()<<FileBrowser::getFile("C:\\Users\\alexk\\Documents\\Privat\\Softwareentwicklung\\QT\\Projekte\\Pixelengine\\src\\utility").c_str();
- //   getchar();
+    progExecPath = argv[0];
+#ifdef RELEASE_COMPILE
+    std::string tmpPath = progExecPath;
+    tmpPath = tmpPath.substr(0,tmpPath.rfind("\\"));
+    resourcePath = tmpPath + "\\" + resourcePath;
+    outputPath   = tmpPath + "\\" + outputPath;
+#else
+    std::string tmpPath = progExecPath;
+    tmpPath = tmpPath.substr(0,tmpPath.rfind("\\"));
+    tmpPath = tmpPath.substr(0,tmpPath.rfind("\\"));
+    tmpPath = tmpPath.substr(0,tmpPath.rfind("\\"));
+    tmpPath = tmpPath.substr(0,tmpPath.rfind("\\"));
+    resourcePath = tmpPath+"\\resources"; // Where your images are stored
+    outputPath   = tmpPath+"\\resources\\output"; // Where your images will be exported to
+#endif
+
+
     PixelEngine::Settings settings  = PixelEngine::getSettings();
+#ifdef RELEASE_COMPILE
     float windowScale = 1;
+#else
+    //float windowScale = 1;
+    float windowScale = 2;
+#endif
     settings.display.windowSize     = Vector2u(1900*windowScale,1000*windowScale);
     settings.display.pixelMapSize   = mapsize;
 
@@ -269,7 +296,7 @@ void userEventLoop(float tickInterval,unsigned long long tick,const vector<sf::E
     {
         if(!insertingImageMode)
         {
-            insertingImagePath = FileBrowser::getFile("");
+            insertingImagePath = FileBrowser::getFile(resourcePath);
             if(insertingImagePath == "")// No file selected
                 goto noImageInsertion;
 
@@ -633,8 +660,8 @@ void saveToImage()
     string path     = outputPath;
     std::time_t t   = std::time(0);   // get time now
     std::tm* now    = std::localtime(&t);
-    string timeDate = to_string(now->tm_mday)+"."+to_string(now->tm_mon+1)+"."+to_string(now->tm_year+1900)+"_";
-    timeDate       += to_string(now->tm_hour)+"."+to_string(now->tm_min)+"."+to_string(now->tm_sec)+"_";
+    string timeDate = to_string(now->tm_mday)+"_"+to_string(now->tm_mon+1)+"_"+to_string(now->tm_year+1900)+"_";
+    timeDate       += to_string(now->tm_hour)+"_"+to_string(now->tm_min)+"_"+to_string(now->tm_sec)+"_";
     saveToImage(path + "\\" + timeDate +to_string(engine->getTick()) + ".png" );
 }
 void saveToImage(const string &file)
