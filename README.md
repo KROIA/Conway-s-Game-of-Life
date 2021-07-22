@@ -7,11 +7,32 @@ Play with the interactive Game of Life implementation, create your own creations
 ### Features
 * Pause and Play the game using the space key.<br>
 * Leftklick for adding a living cell and rightklick to kill a cell.<br>
-* Press key: 1,2 or 3  to load one of 3 example images.<br>
-* Press key: S  to store the current frame.<br>
-* Press key: A  to load the last stored frame.<br>
-* Zoom in and out using the mousewheel. <br>
-* Drag the map around by klick and drag on the mousewheel.<br>
+* Edit the map, insert stored images to the map.<br>
+
+### Keybinding:<br>
+
+| Key | Description |
+| --- | --- |
+| SPACE | Will pause the game |
+| P | Will show some stats about the running engine |
+| 1 | Will load the resources\Glider_gun.png |
+| 2 | Will load the resources\Simkin_glider_gun.png |
+| 3 | Will load the resources\Netmaker.png |
+| 4 | Will load the resources\frothing_spaceship.png |
+| 5 | Will load the resources\Sun.png |
+| C | Clears the map |
+| S | Saves the current map to an image in the Folder: resources\output |
+| A | Will load the last saved map |
+| O | Will open the filebrowser, so you can load images.<br>Move the mouse for positioning the image, rotate by right click and placing by left click. |
+| --> | Will step one step forward |
+| ENTER | Will remove this infotext |
+
+| Mouse | Description |
+| --- | --- |
+| WheelScroll | Zoom +/- |
+| WheelKlick MouseMove | Moves the Camera |
+| LeftKlick | Sets the cell on the mouse cursor to alive |
+| RightKlick | Sets the cell on the mouse cursor to dead |
 
 ## Setup
 Clone this Git. It will contain the Pixelengine as submodule.
