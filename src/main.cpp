@@ -269,6 +269,15 @@ void userEventLoop(float tickInterval,unsigned long long tick,const vector<sf::E
         if(!insertingImageMode)
         {
             insertingImagePath = FileBrowser::getFile("");
+            if(insertingImagePath == "")// No file selected
+                goto noImageInsertion;
+
+            sf::Image testImage;
+            if(!testImage.loadFromFile(insertingImagePath))
+            {
+                // File not existent
+                goto noImageInsertion;
+            }
             insertingImageMode = true;
 
             Texture *texture = new Texture();
@@ -287,6 +296,7 @@ void userEventLoop(float tickInterval,unsigned long long tick,const vector<sf::E
 
             //loadFromImage(filePath,Vector2u(0,0));
         }
+        noImageInsertion:;
     }
     if(keyEvent_ESCAPE.isSinking())
     {
@@ -541,6 +551,7 @@ void loadFromImage(const string &image,Vector2i drawPos,Origin origin,int rotati
             int rotatedX = 0;
             int rotatedY = 0;
 
+
             switch(rotation)
             {
                 case 0:
@@ -552,7 +563,7 @@ void loadFromImage(const string &image,Vector2i drawPos,Origin origin,int rotati
                 break;
                 case 1:
                     rotatedX = -y-1;
-                    rotatedY = -x+imageSize.x-1;
+                    rotatedY = x;
 
                     orientationOriginOffset.x =  imageSize.y;
                     orientationOriginOffset.y = -imageSize.x;
@@ -566,7 +577,7 @@ void loadFromImage(const string &image,Vector2i drawPos,Origin origin,int rotati
                 break;
                 case 3:
                     rotatedX = y;
-                    rotatedY = x-imageSize.x;
+                    rotatedY = -x-1;
 
                     orientationOriginOffset.x = -imageSize.y;
                     orientationOriginOffset.y =  imageSize.x;
